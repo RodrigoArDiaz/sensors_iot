@@ -22,6 +22,9 @@ Route::prefix('sensors')->group(function () {
     
     // GET /api/sensors - Obtener últimas lecturas
     Route::get('/', [SensorController::class, 'index']);
+    
+    // POST /api/sensors/latest - Obtener la última medición (para peticiones dinámicas)
+    Route::post('/latest', [SensorController::class, 'getLatest']);
 });
 
 // Ruta de prueba
