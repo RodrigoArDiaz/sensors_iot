@@ -15,18 +15,18 @@ use App\Http\Controllers\SensorController;
 |
 */
 
-// Rutas para sensores de temperatura y humedad (protegidas con API key)
-Route::prefix('sensors')->middleware('api.key')->group(function () {
-    // POST /api/sensors - Recibir datos del sensor
-    Route::post('/', [SensorController::class, 'store']);
+// Rutas para sensores de temperatura y humedad
+Route::prefix('sensors')->group(function () {
+    // POST /api/sensors - Recibir datos del sensor (PROTEGIDO con API key)
+    Route::post('/', [SensorController::class, 'store'])->middleware('api.key');
     
-    // GET /api/sensors - Obtener últimas lecturas
+    // GET /api/sensors - Obtener últimas lecturas (SIN protección)
     Route::get('/', [SensorController::class, 'index']);
     
-    // POST /api/sensors/latest - Obtener la última medición (para peticiones dinámicas)
+    // POST /api/sensors/latest - Obtener la última medición (SIN protección)
     Route::post('/latest', [SensorController::class, 'getLatest']);
     
-    // POST /api/sensors/chart-data - Obtener datos para gráficos
+    // POST /api/sensors/chart-data - Obtener datos para gráficos (SIN protección)
     Route::post('/chart-data', [SensorController::class, 'getChartData']);
 });
 
