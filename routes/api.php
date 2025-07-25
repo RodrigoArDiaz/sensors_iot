@@ -15,8 +15,8 @@ use App\Http\Controllers\SensorController;
 |
 */
 
-// Rutas para sensores de temperatura y humedad
-Route::prefix('sensors')->group(function () {
+// Rutas para sensores de temperatura y humedad (protegidas con API key)
+Route::prefix('sensors')->middleware('api.key')->group(function () {
     // POST /api/sensors - Recibir datos del sensor
     Route::post('/', [SensorController::class, 'store']);
     
@@ -30,7 +30,7 @@ Route::prefix('sensors')->group(function () {
     Route::post('/chart-data', [SensorController::class, 'getChartData']);
 });
 
-// Ruta de prueba
+// Ruta de prueba (sin protección)
 Route::get('/test', function () {
     return response()->json([
         'message' => 'API funcionando correctamente',

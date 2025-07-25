@@ -107,6 +107,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Sensor API Key
+    |--------------------------------------------------------------------------
+    |
+    | This key is used to authenticate requests to the sensor endpoints.
+    | Set this value in your .env file for security.
+    |
+    */
+
+    'sensor_api_key' => env('SENSOR_API_KEY'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
     |
