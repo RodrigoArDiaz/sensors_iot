@@ -25,6 +25,9 @@ Route::prefix('sensors')->group(function () {
     
     // POST /api/sensors/latest - Obtener la última medición (para peticiones dinámicas)
     Route::post('/latest', [SensorController::class, 'getLatest']);
+    
+    // POST /api/sensors/chart-data - Obtener datos para gráficos
+    Route::post('/chart-data', [SensorController::class, 'getChartData']);
 });
 
 // Ruta de prueba

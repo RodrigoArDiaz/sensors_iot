@@ -1,3 +1,7 @@
+@php
+    $updateInterval = 60000; // 10 segundos
+@endphp
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10,6 +14,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         body {
@@ -94,6 +100,31 @@
             
             .sensor-icon {
                 font-size: 2rem;
+            }
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+        }
+        
+        .chart-container canvas {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+        }
+        
+        @media (max-width: 992px) {
+            .chart-container {
+                height: 250px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 200px;
+                margin-bottom: 2rem;
             }
         }
     </style>
@@ -182,15 +213,57 @@
             </div>
         </div>
 
-        <!-- Info adicional -->
+        <!-- Gráficos -->
         <div class="row mt-4">
+            <div class="col-12">
+                <div class="sensor-card p-4">
+                    <h3 class="text-center mb-4">
+                        <i class="bi bi-graph-up"></i>
+                        Histórico de Mediciones
+                    </h3>
+                    <div class="row">
+                        <!-- Gráfico de Temperatura -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="chart-container">
+                                <h5 class="text-center text-danger mb-3">
+                                    <i class="bi bi-thermometer-half"></i>
+                                    Temperatura (°C)
+                                </h5>
+                                <canvas id="temperatureChart" width="400" height="300"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Gráfico de Humedad -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="chart-container">
+                                <h5 class="text-center text-info mb-3">
+                                    <i class="bi bi-droplet-half"></i>
+                                    Humedad (%)
+                                </h5>
+                                <canvas id="humidityChart" width="400" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-clock"></i>
+                            Últimas 20 mediciones - Actualización automática cada 10 segundos
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Info adicional -->
+        <div class="row my-4">
             <div class="col-12">
                 <div class="sensor-card p-4">
                     <div class="row text-center">
                         <div class="col-md-4">
                             <i class="bi bi-arrow-clockwise text-primary" style="font-size: 2rem;"></i>
                             <h5 class="mt-2">Actualización automática</h5>
-                            <p class="text-muted">Cada 10 segundos</p>
+                            <p class="text-muted">Cada {{ $updateInterval / 1000 }} segundos</p>
                         </div>
                         <div class="col-md-4">
                             <i class="bi bi-wifi text-success" style="font-size: 2rem;"></i>
@@ -214,8 +287,9 @@
     <!-- JavaScript para actualización automática -->
     <script>
         // Configuración
-        const UPDATE_INTERVAL = 10000; // 10 segundos
+        const UPDATE_INTERVAL = {{ $updateInterval }}; // 10 segundos
         const API_ENDPOINT = '/api/sensors/latest';
+        const CHART_API_ENDPOINT = '/api/sensors/chart-data';
         
         // Elementos del DOM
         const temperatureElement = document.getElementById('temperature');
@@ -228,6 +302,123 @@
         
         // Token CSRF para las peticiones POST
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        // Variables para los gráficos
+        let temperatureChart = null;
+        let humidityChart = null;
+        
+        // Configuración de los gráficos
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            animation: {
+                duration: 750
+            }
+        };
+        
+        // Función para inicializar los gráficos
+        function initializeCharts() {
+            // Gráfico de Temperatura
+            const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+            temperatureChart = new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Temperatura (°C)',
+                        data: [],
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#ff6b6b',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            // Gráfico de Humedad
+            const humCtx = document.getElementById('humidityChart').getContext('2d');
+            humidityChart = new Chart(humCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Humedad (%)',
+                        data: [],
+                        borderColor: '#4ecdc4',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#4ecdc4',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+        
+        // Función para obtener datos de los gráficos
+        async function fetchChartData() {
+            try {
+                const response = await fetch(CHART_API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    // Actualizar gráfico de temperatura
+                    temperatureChart.data.labels = data.data.labels;
+                    temperatureChart.data.datasets[0].data = data.data.temperature;
+                    temperatureChart.update('none');
+                    
+                    // Actualizar gráfico de humedad
+                    humidityChart.data.labels = data.data.labels;
+                    humidityChart.data.datasets[0].data = data.data.humidity;
+                    humidityChart.update('none');
+                    
+                    console.log('Gráficos actualizados:', data.data);
+                }
+                
+            } catch (error) {
+                console.error('Error al obtener datos de gráficos:', error);
+            }
+        }
         
         // Función para actualizar el estado de conexión
         function updateConnectionStatus(isOnline) {
@@ -284,13 +475,24 @@
             }
         }
         
+        // Función para actualizar todos los datos (sensores + gráficos)
+        async function updateAllData() {
+            await Promise.all([
+                fetchLatestSensorData(),
+                fetchChartData()
+            ]);
+        }
+        
         // Función para inicializar la actualización automática
         function startAutoUpdate() {
+            // Inicializar gráficos
+            initializeCharts();
+            
             // Obtener datos inmediatamente
-            fetchLatestSensorData();
+            updateAllData();
             
             // Configurar actualización cada 10 segundos
-            setInterval(fetchLatestSensorData, UPDATE_INTERVAL);
+            setInterval(updateAllData, UPDATE_INTERVAL);
             
             console.log(`Actualización automática iniciada cada ${UPDATE_INTERVAL / 1000} segundos`);
         }

@@ -155,4 +155,55 @@ class SensorController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get chart data for temperature and humidity graphs
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getChartData(Request $request): JsonResponse
+    {
+        try {
+            // Obtener los últimos 20 registros para el gráfico
+            $limit = $request->get('limit', 20);
+            
+            $sensors = SensorTemperatureHumidity::orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get()
+                ->reverse() // Revertir para mostrar cronológicamente
+                ->values(); // Reindexar
+            
+            $labels = [];
+            $temperatures = [];
+            $humidities = [];
+            
+            foreach ($sensors as $sensor) {
+                // Convertir fecha a zona horaria de Tucumán
+                $tucumanTime = Carbon::parse($sensor->created_at)
+                    ->setTimezone('America/Argentina/Tucuman');
+                
+                $labels[] = $tucumanTime->format('H:i:s');
+                $temperatures[] = (float) $sensor->temperature;
+                $humidities[] = (float) $sensor->humidity;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'labels' => $labels,
+                    'temperature' => $temperatures,
+                    'humidity' => $humidities,
+                    'timezone' => 'America/Argentina/Tucuman'
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener datos del gráfico',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
