@@ -1,0 +1,95 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\SensorTemperatureHumidity;
+use Illuminate\Http\JsonResponse;
+
+class SensorController extends Controller
+{
+    /**
+     * Store sensor data (temperature and humidity)
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function store(Request $request): JsonResponse
+    {
+        try {
+            // Validar los datos recibidos
+            $validated = $request->validate([
+                'temperature' => 'required|string|max:10',
+                'humidity' => 'required|string|max:10',
+            ]);
+
+            // Crear el registro en la base de datos
+            $sensor = SensorTemperatureHumidity::create([
+                'temperature' => $validated['temperature'],
+                'humidity' => $validated['humidity'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Datos del sensor guardados correctamente',
+                'data' => [
+                    'id' => $sensor->id,
+                    'temperature' => $sensor->temperature,
+                    'humidity' => $sensor->humidity,
+                    'created_at' => $sensor->created_at->format('Y-m-d H:i:s')
+                ]
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno del servidor',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get latest sensor readings
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function index(Request $request): JsonResponse
+    {
+        try {
+            $limit = $request->get('limit', 10);
+            
+            $sensors = SensorTemperatureHumidity::orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get()
+                ->map(function ($sensor) {
+                    return [
+                        'id' => $sensor->id,
+                        'temperature' => $sensor->temperature,
+                        'humidity' => $sensor->humidity,
+                        'created_at' => $sensor->created_at->format('Y-m-d H:i:s')
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $sensors
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los datos',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+}
