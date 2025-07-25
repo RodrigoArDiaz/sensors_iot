@@ -28,7 +28,7 @@ RUN composer install --no-dev --optimize-autoloader
 RUN cp .env.example .env
 
 # Genera la clave de aplicación
-RUN php artisan key:generate
+# RUN php artisan key:generate
 
 # Ejecuta las migraciones
 RUN php artisan migrate --force
