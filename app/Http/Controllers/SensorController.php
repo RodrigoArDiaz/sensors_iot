@@ -206,4 +206,85 @@ class SensorController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get 12-hour chart data grouped by intervals
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function get12HourChartData(Request $request): JsonResponse
+    {
+        try {
+            // Obtener mediciones de las últimas 12 horas
+            $twelveHoursAgo = Carbon::now()->subHours(12);
+            
+            $sensors = SensorTemperatureHumidity::where('created_at', '>=', $twelveHoursAgo)
+                ->orderBy('created_at', 'asc')
+                ->get();
+            
+            if ($sensors->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay datos disponibles para las últimas 12 horas'
+                ], 404);
+            }
+            
+            // Agrupar por intervalos de 10 minutos
+            $intervalMinutes = 10;
+            $groupedData = [];
+            
+            foreach ($sensors as $sensor) {
+                $tucumanTime = Carbon::parse($sensor->created_at)
+                    ->setTimezone('America/Argentina/Tucuman');
+                
+                // Agrupar por intervalos de 10 minutos
+                $intervalStart = $tucumanTime->copy()
+                    ->minute(intval($tucumanTime->minute / $intervalMinutes) * $intervalMinutes)
+                    ->second(0);
+                
+                $key = $intervalStart->format('Y-m-d H:i:s');
+                
+                if (!isset($groupedData[$key])) {
+                    $groupedData[$key] = [
+                        'timestamp' => $intervalStart,
+                        'temperatures' => [],
+                        'humidities' => []
+                    ];
+                }
+                
+                $groupedData[$key]['temperatures'][] = (float) $sensor->temperature;
+                $groupedData[$key]['humidities'][] = (float) $sensor->humidity;
+            }
+            
+            $labels = [];
+            $temperatures = [];
+            $humidities = [];
+            
+            foreach ($groupedData as $data) {
+                $labels[] = $data['timestamp']->format('H:i');
+                $temperatures[] = round(array_sum($data['temperatures']) / count($data['temperatures']), 1);
+                $humidities[] = round(array_sum($data['humidities']) / count($data['humidities']), 1);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'labels' => $labels,
+                    'temperature' => $temperatures,
+                    'humidity' => $humidities,
+                    'timezone' => 'America/Argentina/Tucuman',
+                    'interval_minutes' => $intervalMinutes,
+                    'total_points' => count($labels)
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener datos de 12 horas',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

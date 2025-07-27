@@ -136,11 +136,8 @@
             <div class="col-12 text-center">
                 <h1 class="text-white mb-3">
                     <i class="bi bi-cpu"></i>
-                    Dashboard de Sensores IoT
-                </h1>
-                <p class="text-white-50 lead">
                     Monitoreo en tiempo real de temperatura y humedad
-                </p>
+                </h1>
                 <div class="mt-3">
                     <span class="status-indicator status-online" id="connectionStatus"></span>
                     <span class="text-white" id="connectionText">Conectado</span>
@@ -227,7 +224,7 @@
                             <div class="chart-container">
                                 <h5 class="text-center text-danger mb-3">
                                     <i class="bi bi-thermometer-half"></i>
-                                    Temperatura (°C)
+                                    Temperatura (°C) -Ultimas 20 mediciones
                                 </h5>
                                 <canvas id="temperatureChart" width="400" height="300"></canvas>
                             </div>
@@ -238,7 +235,7 @@
                             <div class="chart-container">
                                 <h5 class="text-center text-info mb-3">
                                     <i class="bi bi-droplet-half"></i>
-                                    Humedad (%)
+                                    Humedad (%) -Ultimas 20 mediciones
                                 </h5>
                                 <canvas id="humidityChart" width="400" height="300"></canvas>
                             </div>
@@ -246,8 +243,49 @@
                     </div>
                     <div class="text-center mt-3">
                         <small class="text-muted">
-                            <i class="bi bi-clock"></i>
-                            Últimas 20 mediciones - Actualización automática cada 10 segundos
+                            {{-- <i class="bi bi-clock"></i> --}}
+                            {{--  --}}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos de 12 Horas -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="sensor-card p-4">
+                    <h3 class="text-center mb-4">
+                        <i class="bi bi-clock-history"></i>
+                        Histórico de las Últimas 12 Horas
+                    </h3>
+                    <div class="row">
+                        <!-- Gráfico de Temperatura 12 Horas -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="chart-container">
+                                <h5 class="text-center text-danger mb-3">
+                                    <i class="bi bi-thermometer-half"></i>
+                                    Temperatura (°C) - 12 Horas (promedio cada 10 min)
+                                </h5>
+                                <canvas id="temperature12HChart" width="400" height="300"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Gráfico de Humedad 12 Horas -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="chart-container">
+                                <h5 class="text-center text-info mb-3">
+                                    <i class="bi bi-droplet-half"></i>
+                                    Humedad (%) - 12 Horas (promedio cada 10 min)
+                                </h5>
+                                <canvas id="humidity12HChart" width="400" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            Los datos se agrupan en intervalos de 10 minutos para una mejor visualización
                         </small>
                     </div>
                 </div>
@@ -290,6 +328,7 @@
         const UPDATE_INTERVAL = {{ $updateInterval }}; // 10 segundos
         const API_ENDPOINT = '/api/sensors/latest';
         const CHART_API_ENDPOINT = '/api/sensors/chart-data';
+        const CHART_12H_API_ENDPOINT = '/api/sensors/12hour-chart-data';
         
         // Elementos del DOM
         const temperatureElement = document.getElementById('temperature');
@@ -306,6 +345,8 @@
         // Variables para los gráficos
         let temperatureChart = null;
         let humidityChart = null;
+        let temperature12HChart = null;
+        let humidity12HChart = null;
         
         // Configuración de los gráficos
         const chartOptions = {
@@ -381,6 +422,52 @@
                 },
                 options: chartOptions
             });
+            
+            // Gráfico de Temperatura 12 Horas
+            const temp12HCtx = document.getElementById('temperature12HChart').getContext('2d');
+            temperature12HChart = new Chart(temp12HCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Temperatura (°C)',
+                        data: [],
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#ff6b6b',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1,
+                        pointRadius: 3
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            // Gráfico de Humedad 12 Horas
+            const hum12HCtx = document.getElementById('humidity12HChart').getContext('2d');
+            humidity12HChart = new Chart(hum12HCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Humedad (%)',
+                        data: [],
+                        borderColor: '#4ecdc4',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#4ecdc4',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1,
+                        pointRadius: 3
+                    }]
+                },
+                options: chartOptions
+            });
         }
         
         // Función para obtener datos de los gráficos
@@ -417,6 +504,45 @@
                 
             } catch (error) {
                 console.error('Error al obtener datos de gráficos:', error);
+            }
+        }
+        
+        // Función para obtener datos de los gráficos de 12 horas
+        async function fetch12HourChartData() {
+            try {
+                const response = await fetch(CHART_12H_API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    // Actualizar gráfico de temperatura 12 horas
+                    temperature12HChart.data.labels = data.data.labels;
+                    temperature12HChart.data.datasets[0].data = data.data.temperature;
+                    temperature12HChart.update('none');
+                    
+                    // Actualizar gráfico de humedad 12 horas
+                    humidity12HChart.data.labels = data.data.labels;
+                    humidity12HChart.data.datasets[0].data = data.data.humidity;
+                    humidity12HChart.update('none');
+                    
+                    console.log('Gráficos de 12 horas actualizados:', data.data);
+                } else {
+                    console.warn('No hay datos de 12 horas disponibles:', data.message);
+                }
+                
+            } catch (error) {
+                console.error('Error al obtener datos de gráficos de 12 horas:', error);
             }
         }
         
@@ -479,7 +605,8 @@
         async function updateAllData() {
             await Promise.all([
                 fetchLatestSensorData(),
-                fetchChartData()
+                fetchChartData(),
+                fetch12HourChartData()
             ]);
         }
         

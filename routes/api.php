@@ -28,6 +28,9 @@ Route::prefix('sensors')->group(function () {
     
     // POST /api/sensors/chart-data - Obtener datos para gráficos (SIN protección)
     Route::post('/chart-data', [SensorController::class, 'getChartData']);
+    
+    // POST /api/sensors/12hour-chart-data - Obtener datos de gráficos de 12 horas (SIN protección)
+    Route::post('/12hour-chart-data', [SensorController::class, 'get12HourChartData']);
 });
 
 // Ruta de prueba (sin protección)
